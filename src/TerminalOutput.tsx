@@ -13,7 +13,7 @@ const TerminalOutput = ({
         <div style={{ border: "1px solid black" }}>
             <div
             style={{
-                width: "400px",
+                width: "800px",
                 height: "300px",
                 padding: "10px",
                 textAlign: "left",
