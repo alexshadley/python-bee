@@ -9,7 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/highlight.js": "^10.1.0",
+    "@types/highlightjs": "^9.12.2",
+    "@types/prismjs": "^1.26.0",
+    "highlightjs": "^9.16.2",
+    "hljs": "^6.2.3",
     "lodash": "^4.17.21",
+    "prismjs": "^1.29.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-simple-code-editor": "^0.13.1",
