@@ -89,6 +89,13 @@ const useSocket = () => {
     socket.emit('submit');
   }
 
+  const nextQuestion = () => {
+    socket.emit('clearCode');
+    socket.emit('getQuestion');
+    setSubmissionResult(null);
+    
+  }
+
   return {
     connected,
     users,
@@ -101,7 +108,8 @@ const useSocket = () => {
     submissionResult,
     setCode,
     emitKeyPress,
-    submitQuestion
+    submitQuestion,
+    nextQuestion,
   };
 };
 
@@ -131,7 +139,7 @@ const UserList = ({
 };
 
 const App = () => {
-  const { connected, currentUser, users, code, submissionResult, currentTurnId, questionName, questionDescription, questionStub, emitKeyPress, submitQuestion } =
+  const { connected, currentUser, users, code, submissionResult, currentTurnId, questionName, questionDescription, questionStub, emitKeyPress, submitQuestion, nextQuestion } =
     useSocket();
 
   return (
@@ -159,7 +167,7 @@ const App = () => {
             <TerminalOutput
               text={submissionResult}
             /> 
-            <button onClick={submitQuestion}>Submit Answer</button>
+            <button onClick={nextQuestion}>Next Question</button>
             </>
             : 
             <button onClick={submitQuestion}>Submit Answer</button>

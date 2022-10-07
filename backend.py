@@ -5,8 +5,8 @@ from evaluator import test_function
 import json
 import random
 
-FIRSTS = ["obfuscated", "abstruse", "erudite", "obscure", "intransigent"]
-LASTS = ["condor", "mockingbird", "falcon", "sparrow"]
+names = json.load(open("./usernames.json"))
+FIRSTS, LASTS = names['firsts'], names['lasts']
 
 
 app = Flask(__name__)
@@ -76,13 +76,13 @@ def key_press(key):
     emit("setCode", code, broadcast=True)
 
 
-# <<<<<<< HEAD
-@socketio.on("get_question")
+@socketio.on("getQuestion")
 def get_question(id=None):
     global question_id
     global code
     if id is None:
-        id = random.randint(0, len(questions) - 1)
+        id = random.choice(list(questions.keys()))
+    print(id)
     id = str(id)
 
     question_name, question_description, question_stub = (
@@ -117,6 +117,11 @@ def submit():
     print(results)
     emit("submissionResults", json.dumps(results), broadcast=True)
 
+@socketio.on("clearCode")
+def clear_code():
+    global code
+    code = ""
+    emit("setCode", code, broadcast=True)
 
 # @socketio.on('add_note')
 # def add_note(message):
