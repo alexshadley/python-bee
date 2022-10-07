@@ -1,4 +1,4 @@
-from numpy import broadcast
+
 from flask import Flask, jsonify, request
 from flask_socketio import SocketIO, emit
 from evaluator import test_function
