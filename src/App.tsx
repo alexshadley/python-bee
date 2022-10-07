@@ -5,7 +5,7 @@ import io from "socket.io-client";
 import { sortBy } from "lodash";
 import Editor from "./Editor";
 
-const socket = io("localhost:5000");
+const socket = io("localhost:5001");
 
 type User = {
   id: string;

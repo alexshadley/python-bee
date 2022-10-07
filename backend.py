@@ -1,5 +1,7 @@
+from numpy import broadcast
 from flask import Flask, jsonify, request
 from flask_socketio import SocketIO, emit
+from evaluator import test_function
 
 import json
 import random
@@ -12,6 +14,7 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "secret!"
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+question_id = 0
 code = ""
 users = []
 
@@ -58,6 +61,14 @@ def key_press(key):
     print(code)
     emit("setCode", code, broadcast=True)
 
+@socketio.on('submit')
+def submit():
+    global code
+    global question_id
+    results = test_function(code, [((2,3), 5)])
+    emit("submissionResults", results, broadcast=True)
+
+    
 
 # @socketio.on('add_note')
 # def add_note(message):
@@ -135,4 +146,4 @@ def key_press(key):
 #     print('Client disconnected')
 
 if __name__ == "__main__":
-    socketio.run(app, use_reloader=True)
+    socketio.run(app, port=5001, use_reloader=True)
