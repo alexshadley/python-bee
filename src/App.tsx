@@ -131,7 +131,7 @@ const App = () => {
             currentTurnId={currentTurnId}
           />
           <Editor
-            value={code}
+            value={questionStub + code}
             onKeyDown={(key) => {
               if (currentTurnId === currentUser.id) {
                 console.log(key);
