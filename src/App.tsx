@@ -4,6 +4,7 @@ import "./App.css";
 import io from "socket.io-client";
 import { sortBy } from "lodash";
 import Editor from "./Editor";
+import TerminalOutput from "./TerminalOutput";
 
 const socket = io("localhost:5001");
 
@@ -28,6 +29,7 @@ const useSocket = () => {
   const [currentTurnId, setCurrentTurnId] = useState<string | null>(null);
   const [questionName, setQuestionName] = useState<string | null>(null);
   const [questionDescription, setQuestionDescription] = useState<string | null>(null);
+  const [submissionResult, setSubmissionResult] = useState<string | null>(null);
   const [questionStub, setQuestionStub] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [code, setCode] = useState<string>("");
@@ -37,6 +39,7 @@ const useSocket = () => {
       setConnected(true);
     });
 
+    
     socket.on("disconnect", () => {
       setConnected(false);
     });
@@ -53,6 +56,12 @@ const useSocket = () => {
       setQuestionDescription(question.description);
       setQuestionStub(question.stub);
     });
+
+    socket.on("submissionResults", (msg: string) => {
+      let results: string[] = JSON.parse(msg);
+      setSubmissionResult(results.join('\n'));
+    });
+
 
     socket.on("setTurn", (userId: string) => {
       setCurrentTurnId(userId);
@@ -76,6 +85,10 @@ const useSocket = () => {
     socket.emit("keyPress", key);
   };
 
+  const submitQuestion = () => {
+    socket.emit('submit');
+  }
+
   return {
     connected,
     users,
@@ -85,8 +98,10 @@ const useSocket = () => {
     questionDescription,
     questionStub,
     code,
+    submissionResult,
     setCode,
     emitKeyPress,
+    submitQuestion
   };
 };
 
@@ -116,7 +131,7 @@ const UserList = ({
 };
 
 const App = () => {
-  const { connected, currentUser, users, code, currentTurnId, questionName, questionDescription, questionStub, emitKeyPress } =
+  const { connected, currentUser, users, code, submissionResult, currentTurnId, questionName, questionDescription, questionStub, emitKeyPress, submitQuestion } =
     useSocket();
 
   return (
@@ -139,8 +154,19 @@ const App = () => {
               }
             }}
           />
+          {submissionResult ? 
+            <>
+            <TerminalOutput
+              text={submissionResult}
+            /> 
+            <button onClick={submitQuestion}>Submit Answer</button>
+            </>
+            : 
+            <button onClick={submitQuestion}>Submit Answer</button>
+          }
         </>
       )}
+      
     </>
   );
 };

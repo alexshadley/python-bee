@@ -16,7 +16,7 @@ def test_function(func_str: str, test_cases: List[Any]) -> str:
         defined_function = locals()[func_name]
 
     except Exception as e:
-        return [e]
+        return [str(e)]
 
     results = []
     for t in test_cases:
@@ -28,7 +28,7 @@ def test_function(func_str: str, test_cases: List[Any]) -> str:
             else:
                 results.append(f'FAIL: ({input}) => ({expected}), received ({result})')
         except Exception as e:
-            results.append(f'FAIL: ({input}) => ({expected}) with error: {e}')
+            results.append(f'FAIL: ({input}) => ({expected}) with error: {str(e)}')
     
     return results
 

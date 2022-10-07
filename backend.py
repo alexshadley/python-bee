@@ -88,10 +88,12 @@ def get_question(id=None):
 
 @socketio.on('submit')
 def submit():
+    print('submitted')
     global code
     global question_id
     results = test_function(questions[str(question_id)]['stub'] + code, questions[str(question_id)]['test_cases'])
-    emit("submissionResults", results, broadcast=True)
+    print(results)
+    emit("submissionResults", json.dumps(results), broadcast=True)
 
     
 
