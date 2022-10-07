@@ -4,19 +4,20 @@ from flask_socketio import SocketIO, emit
 import json
 import random
 
+FIRSTS = ["obfuscated", "abstruse", "erudite", "obscure", "intransigent"]
+LASTS = ["condor", "mockingbird", "falcon", "sparrow"]
+
+
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "secret!"
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+code = ""
 users = []
 
 
-firsts = ["obfuscated", "abstruse", "erudite", "obscure", "intransigent"]
-lasts = ["condor", "mockingbird", "falcon", "sparrow"]
-
-
 def get_name():
-    return random.choice(firsts) + " " + random.choice(lasts)
+    return random.choice(FIRSTS) + " " + random.choice(LASTS)
 
 
 @socketio.on("connect")
@@ -39,6 +40,23 @@ def disconnect():
     print("Client disconnected")
 
     users = [u for u in users if u["id"] != request.sid]
+
+
+@socketio.on("keyPress")
+def key_press(key):
+    global code
+    print("key pressed:", key)
+
+    if len(key) == 1:
+        code += key
+    elif key == "Enter":
+        code += "\n"
+    elif key == "Backspace":
+        # TODO: clearline
+        pass
+
+    print(code)
+    emit("setCode", code, broadcast=True)
 
 
 # @socketio.on('add_note')

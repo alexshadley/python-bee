@@ -3,7 +3,7 @@ import "./App.css";
 
 import io from "socket.io-client";
 import { sortBy } from "lodash";
-import Editor from "react-simple-code-editor";
+import Editor from "./Editor";
 
 const socket = io("localhost:5000");
 
@@ -13,10 +13,6 @@ type User = {
   index: number;
 };
 
-// type Turn = {
-//   userId: string;
-// }
-
 const isUser = (u: unknown): u is User =>
   typeof u === "object" && !!u && "name" in u && "index" in u && "id" in u;
 
@@ -25,6 +21,7 @@ const useSocket = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentTurnId, setCurrentTurnId] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const [code, setCode] = useState<string>("");
 
   useEffect(() => {
     socket.on("connect", () => {
@@ -45,6 +42,10 @@ const useSocket = () => {
       setCurrentTurnId(userId);
     });
 
+    socket.on("setCode", (code: string) => {
+      setCode(code);
+    });
+
     socket.on("setUsers", (users: unknown[]) => {
       setUsers(users.filter(isUser));
     });
@@ -55,15 +56,29 @@ const useSocket = () => {
     };
   }, []);
 
-  return { connected, users, currentUser, currentTurnId };
+  const emitKeyPress = (key: string) => {
+    socket.emit("keyPress", key);
+  };
+
+  return {
+    connected,
+    users,
+    currentUser,
+    currentTurnId,
+    code,
+    setCode,
+    emitKeyPress,
+  };
 };
 
 const UserList = ({
   users,
   currentUser,
+  currentTurnId,
 }: {
   users: User[];
   currentUser: User;
+  currentTurnId: string;
 }) => {
   const sorted = [...users];
   sortBy(sorted, "index");
@@ -72,6 +87,7 @@ const UserList = ({
     <div>
       {users.map((u) => (
         <div>
+          {currentTurnId === currentUser.id ? ">" : ""}
           {u.name}
           {u.id === currentUser.id ? "*" : ""}
         </div>
@@ -80,20 +96,31 @@ const UserList = ({
   );
 };
 
-// const GroupEditor = ({ value, isTurn }: { value: string; isTurn: boolean }) => {
-//   return <Editor value={value} onValueChange={(newValue) => {
-
-//     if
-//   }} />;
-// };
-
 const App = () => {
-  const { connected, currentUser, users } = useSocket();
+  const { connected, currentUser, users, code, currentTurnId, emitKeyPress } =
+    useSocket();
 
   return (
     <>
       <div className="App">connection status: {connected ? "yes!" : "no"}</div>
-      {currentUser && <UserList users={users} currentUser={currentUser} />}
+      {currentUser && currentTurnId && (
+        <>
+          <UserList
+            users={users}
+            currentUser={currentUser}
+            currentTurnId={currentTurnId}
+          />
+          <Editor
+            value={code}
+            onKeyDown={(key) => {
+              if (currentTurnId === currentUser.id) {
+                console.log(key);
+                emitKeyPress(key);
+              }
+            }}
+          />
+        </>
+      )}
     </>
   );
 };
