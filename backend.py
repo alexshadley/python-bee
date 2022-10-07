@@ -73,6 +73,7 @@ def get_question(id=None):
 
     question_name, question_description, question_stub = questions[id]['name'], questions[id]['description'], questions[id]['stub']
 
+    question_id = id
     emit("questionContent", {
         'name': question_name,
         'description': question_description, 
@@ -83,7 +84,7 @@ def get_question(id=None):
 def submit():
     global code
     global question_id
-    results = test_function(code, [((2,3), 5)])
+    results = test_function(code, questions[question_id]['test_cases'])
     emit("submissionResults", results, broadcast=True)
 
     

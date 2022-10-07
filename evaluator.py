@@ -4,7 +4,7 @@ import sys
 
     
 
-def test_function(func_str: str, test_cases: List[Tuple[Any, Any]]) -> str:
+def test_function(func_str: str, test_cases: List[Any]) -> str:
     func_name = ''
     defined_function = None
     try:
@@ -19,7 +19,8 @@ def test_function(func_str: str, test_cases: List[Tuple[Any, Any]]) -> str:
         return [e]
 
     results = []
-    for input, expected in test_cases:
+    for t in test_cases:
+        input, expected = t['input'], t['expected']
         try:
             result = defined_function(*input)
             if result == expected:
