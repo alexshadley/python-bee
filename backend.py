@@ -19,7 +19,7 @@ question_id = 0
 code = ""
 users = []
 
-questions = json.load('./questions.json')
+questions = json.load(open('./questions.json'))
 
 def get_name():
     return random.choice(FIRSTS) + " " + random.choice(LASTS)
@@ -34,6 +34,7 @@ def connect():
     users.append(new_user)
     emit("assignUser", new_user)
     emit("setUsers", users, broadcast=True)
+    get_question()
 
     if len(users) == 1:
         emit("setTurn", new_user["id"])
@@ -70,6 +71,7 @@ def get_question(id=None):
     global question_id
     if id is None:
         id = random.randint(0, len(questions) - 1)
+    id = str(id)
 
     question_name, question_description, question_stub = questions[id]['name'], questions[id]['description'], questions[id]['stub']
 
@@ -84,7 +86,7 @@ def get_question(id=None):
 def submit():
     global code
     global question_id
-    results = test_function(code, questions[question_id]['test_cases'])
+    results = test_function(code, questions[str(question_id)]['test_cases'])
     emit("submissionResults", results, broadcast=True)
 
     

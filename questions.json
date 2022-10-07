@@ -1,6 +1,5 @@
 {
     "0":  {
-        "id": 0,
         "name": "Add Two Numbers",
         "description": "Write a function that adds two numbers together",
         "stub": "def add_two_numbers(a, b):\n\t",

@@ -13,6 +13,12 @@ type User = {
   index: number;
 };
 
+type QuestionContent = {
+  name: string;
+  description: string;
+  stub: string;
+};
+
 const isUser = (u: unknown): u is User =>
   typeof u === "object" && !!u && "name" in u && "index" in u && "id" in u;
 
@@ -20,6 +26,9 @@ const useSocket = () => {
   const [connected, setConnected] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentTurnId, setCurrentTurnId] = useState<string | null>(null);
+  const [questionName, setQuestionName] = useState<string | null>(null);
+  const [questionDescription, setQuestionDescription] = useState<string | null>(null);
+  const [questionStub, setQuestionStub] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [code, setCode] = useState<string>("");
 
@@ -36,6 +45,12 @@ const useSocket = () => {
       if (isUser(user)) {
         setCurrentUser(user);
       }
+    });
+
+    socket.on("questionContent", (msg: QuestionContent) => {
+      setQuestionName(msg.name);
+      setQuestionDescription(msg.description);
+      setQuestionStub(msg.stub);
     });
 
     socket.on("setTurn", (userId: string) => {
