@@ -1,4 +1,5 @@
 
+from numpy import broadcast
 from flask import Flask, jsonify, request
 from flask_socketio import SocketIO, emit
 from evaluator import test_function
@@ -18,6 +19,7 @@ question_id = 0
 code = ""
 users = []
 
+questions = json.load('./questions.json')
 
 def get_name():
     return random.choice(FIRSTS) + " " + random.choice(LASTS)
@@ -60,6 +62,20 @@ def key_press(key):
 
     print(code)
     emit("setCode", code, broadcast=True)
+
+@socketio.on('get_question')
+def get_question(id=None):
+    global question_id
+    if id is None:
+        id = random.randint(0, len(questions) - 1)
+
+    question_name, question_description, question_stub = questions[id]['name'], questions[id]['description'], questions[id]['stub']
+
+    emit("questionContent", {
+        'name': question_name,
+        'description': question_description, 
+        'stub': question_stub
+    }, broadcast=True)
 
 @socketio.on('submit')
 def submit():
