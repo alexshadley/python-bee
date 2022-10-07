@@ -12,31 +12,29 @@ const Editor = ({
   value: string;
   onKeyDown: (key: string) => void;
 }) => {
-  console.log(value);
-  const content = hljs.highlight(value, { language: "python" }).value;
+  let content = hljs.highlight(value, { language: "python" }).value;
+  content = content + "_";
   return (
     <div style={{ border: "1px solid black" }}>
       <div
-        onKeyDown={(e) => onKeyDown(e.key)}
-        dangerouslySetInnerHTML={{ __html: content }}
-      />
-      {/* <CodeEditor
-        value={value}
-        onValueChange={(newCode) => {
-          // lib makes us implement this
-        }}
-        onKeyDown={(e) => onKeyDown(e.key)}
-        highlight={(code) => {
-          return hljs.highlight(code, { language: "python" }).value;
-        }}
-        padding={10}
         style={{
           width: "400px",
           height: "300px",
-          fontFamily: '"Fira code", "Fira Mono", monospace',
-          fontSize: 16,
+          padding: "10px",
+          textAlign: "left",
+          fontFamily: "monospace",
+          whiteSpace: "pre",
         }}
-      /> */}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Tab") {
+            // prevent tabbing away
+            e.preventDefault();
+          }
+          onKeyDown(e.key);
+        }}
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
     </div>
   );
 };

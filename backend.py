@@ -56,9 +56,11 @@ def key_press(key):
         code += key
     elif key == "Enter":
         code += "\n"
+    elif key == "Tab":
+        code += "    "
     elif key == "Backspace":
         # TODO: clearline
-        pass
+        code = ""
 
     print(code)
     emit("setCode", code, broadcast=True)
