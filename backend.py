@@ -18,6 +18,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 question_id = 0
 code = ""
 users = []
+current_turn = 0
 
 questions = json.load(open('./questions.json'))
 
@@ -37,7 +38,9 @@ def connect():
     get_question()
 
     if len(users) == 1:
-        emit("setTurn", new_user["id"])
+        global current_turn
+        current_turn = request.sid
+    emit("setTurn", current_turn)
 
 
 @socketio.on("disconnect")
@@ -69,18 +72,20 @@ def key_press(key):
 @socketio.on('get_question')
 def get_question(id=None):
     global question_id
+    global code
     if id is None:
         id = random.randint(0, len(questions) - 1)
     id = str(id)
 
     question_name, question_description, question_stub = questions[id]['name'], questions[id]['description'], questions[id]['stub']
-
+    code = question_stub
+    emit("setCode", code, broadcast=True)
     question_id = id
-    emit("questionContent", {
+    emit("questionContent", json.dumps({
         'name': question_name,
         'description': question_description, 
         'stub': question_stub
-    }, broadcast=True)
+    }), broadcast=True)
 
 @socketio.on('submit')
 def submit():

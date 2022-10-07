@@ -47,10 +47,11 @@ const useSocket = () => {
       }
     });
 
-    socket.on("questionContent", (msg: QuestionContent) => {
-      setQuestionName(msg.name);
-      setQuestionDescription(msg.description);
-      setQuestionStub(msg.stub);
+    socket.on("questionContent", (msg: string) => {
+      let question: QuestionContent = JSON.parse(msg)
+      setQuestionName(question.name);
+      setQuestionDescription(question.description);
+      setQuestionStub(question.stub);
     });
 
     socket.on("setTurn", (userId: string) => {
@@ -80,6 +81,9 @@ const useSocket = () => {
     users,
     currentUser,
     currentTurnId,
+    questionName,
+    questionDescription,
+    questionStub,
     code,
     setCode,
     emitKeyPress,
@@ -112,12 +116,13 @@ const UserList = ({
 };
 
 const App = () => {
-  const { connected, currentUser, users, code, currentTurnId, emitKeyPress } =
+  const { connected, currentUser, users, code, currentTurnId, questionName, questionDescription, questionStub, emitKeyPress } =
     useSocket();
 
   return (
     <>
       <div className="App">connection status: {connected ? "yes!" : "no"}</div>
+      <div className="QuestionText"> {questionName}: {questionDescription}</div>
       {currentUser && currentTurnId && (
         <>
           <UserList
