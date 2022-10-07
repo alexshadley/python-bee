@@ -1,5 +1,3 @@
-
-from numpy import broadcast
 from flask import Flask, jsonify, request
 from flask_socketio import SocketIO, emit
 from evaluator import test_function
@@ -20,7 +18,8 @@ code = ""
 users = []
 current_turn = 0
 
-questions = json.load(open('./questions.json'))
+questions = json.load(open("./questions.json"))
+
 
 def get_name():
     return random.choice(FIRSTS) + " " + random.choice(LASTS)
@@ -33,9 +32,14 @@ def connect():
     index = max([user["index"] for user in users]) + 1 if users else 0
     new_user = {"name": get_name(), "index": index, "id": request.sid}
     users.append(new_user)
-    emit("assignUser", new_user)
+
+    # tell everyone about the new user
     emit("setUsers", users, broadcast=True)
     get_question()
+
+    # initial state setup for new client
+    emit("assignUser", new_user)
+    emit("setCode", code)
 
     if len(users) == 1:
         global current_turn
@@ -63,13 +67,17 @@ def key_press(key):
     elif key == "Tab":
         code += "    "
     elif key == "Backspace":
-        # TODO: clearline
-        code = ""
+        code = "\n".join(code.split("\n")[:-1])
+        # unless we're at the start, stay on the same line
+        if len(code) > 0:
+            code += "\n"
 
     print(code)
     emit("setCode", code, broadcast=True)
 
-@socketio.on('get_question')
+
+# <<<<<<< HEAD
+@socketio.on("get_question")
 def get_question(id=None):
     global question_id
     global code
@@ -77,25 +85,38 @@ def get_question(id=None):
         id = random.randint(0, len(questions) - 1)
     id = str(id)
 
-    question_name, question_description, question_stub = questions[id]['name'], questions[id]['description'], questions[id]['stub']
+    question_name, question_description, question_stub = (
+        questions[id]["name"],
+        questions[id]["description"],
+        questions[id]["stub"],
+    )
     emit("setCode", code, broadcast=True)
     question_id = id
-    emit("questionContent", json.dumps({
-        'name': question_name,
-        'description': question_description, 
-        'stub': question_stub
-    }), broadcast=True)
+    emit(
+        "questionContent",
+        json.dumps(
+            {
+                "name": question_name,
+                "description": question_description,
+                "stub": question_stub,
+            }
+        ),
+        broadcast=True,
+    )
 
-@socketio.on('submit')
+
+@socketio.on("submit")
 def submit():
-    print('submitted')
+    print("submitted")
     global code
     global question_id
-    results = test_function(questions[str(question_id)]['stub'] + code, questions[str(question_id)]['test_cases'])
+    results = test_function(
+        questions[str(question_id)]["stub"] + code,
+        questions[str(question_id)]["test_cases"],
+    )
     print(results)
     emit("submissionResults", json.dumps(results), broadcast=True)
 
-    
 
 # @socketio.on('add_note')
 # def add_note(message):
