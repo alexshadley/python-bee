@@ -31,6 +31,7 @@ const useSocket = () => {
   const [questionDescription, setQuestionDescription] = useState<string | null>(null);
   const [submissionResult, setSubmissionResult] = useState<string | null>(null);
   const [scoreboard, setScoreboard] = useState<{[key: string]: number}>({});
+  const [role, setRole] = useState<string | null>(null);
   const [questionStub, setQuestionStub] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [code, setCode] = useState<string>("");
@@ -82,6 +83,10 @@ const useSocket = () => {
       setUsers(users.filter(isUser));
     });
 
+    socket.on("setRole", (role: string) => {
+      setRole(role);
+    });
+
     return () => {
       socket.off("connect");
       socket.off("disconnect");
@@ -111,6 +116,7 @@ const useSocket = () => {
     questionName,
     questionDescription,
     questionStub,
+    role,
     code,
     submissionResult,
     scoreboard,
@@ -147,11 +153,12 @@ const UserList = ({
 };
 
 const App = () => {
-  const { connected, currentUser, users, code, submissionResult, currentTurnId, questionName, questionDescription, questionStub, scoreboard, emitKeyPress, submitQuestion, nextQuestion } =
+  const { connected, currentUser, users, code, role, submissionResult, currentTurnId, questionName, questionDescription, questionStub, scoreboard, emitKeyPress, submitQuestion, nextQuestion } =
     useSocket();
 
   return (
     <>
+      <div className="Role">You are a {role ? role : "Player"}</div>
       <div className="App">connection status: {connected ? "yes!" : "no"}</div>
       <div className="QuestionText"> {questionName}: {questionDescription}</div>
       {currentUser && currentTurnId && (

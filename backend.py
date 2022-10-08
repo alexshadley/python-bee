@@ -118,7 +118,8 @@ def get_question(id=None):
             roles[user['id']] = 'saboteur'
         else:
             roles[user['id']] = 'player'
-
+        print(roles[user['id']])
+        emit("setRole", roles[user['id']], room=user['id'])
 
 @socketio.on("submit")
 def submit():
@@ -148,6 +149,5 @@ def clear_code():
     emit("setCode", code, broadcast=True)
 
     
-
 if __name__ == "__main__":
     socketio.run(app, port=5001, use_reloader=True)
