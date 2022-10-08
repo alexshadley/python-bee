@@ -1,6 +1,5 @@
 
-from typing import Any, List, Tuple
-import sys
+from typing import Any, List
 
     
 
@@ -19,6 +18,7 @@ def test_function(func_str: str, test_cases: List[Any]) -> str:
         return [str(e)]
 
     results = []
+    correct = True
     for t in test_cases:
         input, expected = t['input'], t['expected']
         try:
@@ -27,8 +27,10 @@ def test_function(func_str: str, test_cases: List[Any]) -> str:
                 results.append(f'PASS: ({input}) => ({expected})')
             else:
                 results.append(f'FAIL: ({input}) => ({expected}), received ({result})')
+                correct = False
         except Exception as e:
             results.append(f'FAIL: ({input}) => ({expected}) with error: {str(e)}')
+            correct = False
     
-    return results
+    return results, correct
 

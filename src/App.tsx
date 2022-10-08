@@ -30,6 +30,7 @@ const useSocket = () => {
   const [questionName, setQuestionName] = useState<string | null>(null);
   const [questionDescription, setQuestionDescription] = useState<string | null>(null);
   const [submissionResult, setSubmissionResult] = useState<string | null>(null);
+  const [scoreboard, setScoreboard] = useState<{[key: string]: number}>({});
   const [questionStub, setQuestionStub] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [code, setCode] = useState<string>("");
@@ -55,6 +56,12 @@ const useSocket = () => {
       setQuestionName(question.name);
       setQuestionDescription(question.description);
       setQuestionStub(question.stub);
+    });
+
+    socket.on("scoreboardUpdate", (msg: string) => {
+      let results: {[key: string]: number} = JSON.parse(msg);
+      console.log(results);
+      setScoreboard(results);
     });
 
     socket.on("submissionResults", (msg: string) => {
@@ -106,6 +113,7 @@ const useSocket = () => {
     questionStub,
     code,
     submissionResult,
+    scoreboard,
     setCode,
     emitKeyPress,
     submitQuestion,
@@ -139,7 +147,7 @@ const UserList = ({
 };
 
 const App = () => {
-  const { connected, currentUser, users, code, submissionResult, currentTurnId, questionName, questionDescription, questionStub, emitKeyPress, submitQuestion, nextQuestion } =
+  const { connected, currentUser, users, code, submissionResult, currentTurnId, questionName, questionDescription, questionStub, scoreboard, emitKeyPress, submitQuestion, nextQuestion } =
     useSocket();
 
   return (
@@ -172,7 +180,23 @@ const App = () => {
             : 
             <button onClick={submitQuestion}>Submit Answer</button>
           }
+          {
+            scoreboard ?
+            <table><tbody>
+            {Object.entries(scoreboard).map((entry) => (
+              <tr><td>{entry[0]}</td><td>{entry[1]}</td></tr>
+            ))}
+            </tbody></table>
+            : <div></div>
+          }
+          
         </>
+        
+          
+        
+            
+          
+        
       )}
       
     </>
