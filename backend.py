@@ -1,8 +1,7 @@
 import collections
-from re import U
 
-from numpy import broadcast
 from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_socketio import SocketIO, emit
 from evaluator import test_function
 
@@ -10,7 +9,7 @@ import json
 import random
 
 names = json.load(open("./usernames.json"))
-FIRSTS, LASTS = names['firsts'], names['lasts']
+FIRSTS, LASTS = names["firsts"], names["lasts"]
 
 
 app = Flask(__name__)
@@ -22,11 +21,22 @@ code = ""
 users = []
 roles = dict()
 scores = collections.defaultdict(lambda: 0)
-current_turn = 0
+current_turn = ""
 
 questions = json.load(open("./questions.json"))
 
 
+def next_turn():
+    global current_turn
+    index = next(u for u in users if u["id"] == current_turn)["index"] + 1
+    users_by_index = {user["index"]: user for user in users}
+    while index not in users_by_index:
+        index += 1
+        # if we came to the end, loop back around
+        if index > max([user["index"] for user in users]):
+            index = 0
+
+    current_turn = users_by_index[index]["id"]
 
 
 def get_name():
@@ -60,7 +70,12 @@ def disconnect():
     global users
     print("Client disconnected")
 
+    # if it was the player's turn and they left, go to next
+    if request.sid == current_turn:
+        next_turn()
+
     users = [u for u in users if u["id"] != request.sid]
+    emit("setUsers", users, broadcast=True)
 
 
 @socketio.on("keyPress")
@@ -80,8 +95,9 @@ def key_press(key):
         if len(code) > 0:
             code += "\n"
 
-    print(code)
+    next_turn()
     emit("setCode", code, broadcast=True)
+    emit("setTurn", current_turn, broadcast=True)
 
 
 @socketio.on("getQuestion")
@@ -113,13 +129,14 @@ def get_question(id=None):
     )
     roles = dict()
     rand_user = random.randint(0, len(users) - 1)
-    for i,user in enumerate(users):
+    for i, user in enumerate(users):
         if i == rand_user:
-            roles[user['id']] = 'saboteur'
+            roles[user["id"]] = "saboteur"
         else:
-            roles[user['id']] = 'player'
-        print(roles[user['id']])
-        emit("setRole", roles[user['id']], room=user['id'])
+            roles[user["id"]] = "player"
+        print(roles[user["id"]])
+        emit("setRole", roles[user["id"]], room=user["id"])
+
 
 @socketio.on("submit")
 def submit():
@@ -134,13 +151,14 @@ def submit():
     emit("submissionResults", json.dumps(results), broadcast=True)
     scoreboard = dict()
     for user in users:
-        user_id = user['id']
-        if roles.get(user_id) == 'saboteur':
+        user_id = user["id"]
+        if roles.get(user_id) == "saboteur":
             scores[user_id] += 0 if correct else 1
         else:
             scores[user_id] += 1 if correct else -1
-        scoreboard[user['name']] = scores[user['id']]
-    emit('scoreboardUpdate', json.dumps(scoreboard), broadcast=True)
+        scoreboard[user["name"]] = scores[user["id"]]
+    emit("scoreboardUpdate", json.dumps(scoreboard), broadcast=True)
+
 
 @socketio.on("clearCode")
 def clear_code():
@@ -148,6 +166,17 @@ def clear_code():
     code = ""
     emit("setCode", code, broadcast=True)
 
-    
+
+@app.route("/web")
+def index():
+    return send_from_directory("dist", "index.html")
+
+
+@app.route("/web/<path:path>")
+def files(path):
+    print("serving", path)
+    return send_from_directory("dist", path)
+
+
 if __name__ == "__main__":
     socketio.run(app, port=5001, use_reloader=True)

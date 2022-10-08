@@ -15,27 +15,26 @@ const Editor = ({
   let content = hljs.highlight(value, { language: "python" }).value;
   content = content + "_";
   return (
-    <div style={{ border: "1px solid black" }}>
-      <div
-        style={{
-          width: "400px",
-          height: "300px",
-          padding: "10px",
-          textAlign: "left",
-          fontFamily: "monospace",
-          whiteSpace: "pre",
-        }}
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Tab") {
-            // prevent tabbing away
-            e.preventDefault();
-          }
-          onKeyDown(e.key);
-        }}
-        dangerouslySetInnerHTML={{ __html: content }}
-      />
-    </div>
+    <div
+      style={{
+        border: "1px solid black",
+        width: "400px",
+        height: "300px",
+        padding: "10px",
+        textAlign: "left",
+        fontFamily: "monospace",
+        whiteSpace: "pre",
+      }}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Tab") {
+          // prevent tabbing away
+          e.preventDefault();
+        }
+        onKeyDown(e.key);
+      }}
+      dangerouslySetInnerHTML={{ __html: content }}
+    />
   );
 };
 

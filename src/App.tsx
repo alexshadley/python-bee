@@ -6,8 +6,6 @@ import { sortBy } from "lodash";
 import Editor from "./Editor";
 import TerminalOutput from "./TerminalOutput";
 
-const socket = io("localhost:5001");
-
 type User = {
   id: string;
   name: string;
@@ -20,6 +18,8 @@ type QuestionContent = {
   stub: string;
 };
 
+const socket = io();
+
 const isUser = (u: unknown): u is User =>
   typeof u === "object" && !!u && "name" in u && "index" in u && "id" in u;
 
@@ -28,9 +28,11 @@ const useSocket = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentTurnId, setCurrentTurnId] = useState<string | null>(null);
   const [questionName, setQuestionName] = useState<string | null>(null);
-  const [questionDescription, setQuestionDescription] = useState<string | null>(null);
+  const [questionDescription, setQuestionDescription] = useState<string | null>(
+    null
+  );
   const [submissionResult, setSubmissionResult] = useState<string | null>(null);
-  const [scoreboard, setScoreboard] = useState<{[key: string]: number}>({});
+  const [scoreboard, setScoreboard] = useState<{ [key: string]: number }>({});
   const [role, setRole] = useState<string | null>(null);
   const [questionStub, setQuestionStub] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -38,10 +40,10 @@ const useSocket = () => {
 
   useEffect(() => {
     socket.on("connect", () => {
+      console.log("connect");
       setConnected(true);
     });
 
-    
     socket.on("disconnect", () => {
       setConnected(false);
     });
@@ -53,23 +55,22 @@ const useSocket = () => {
     });
 
     socket.on("questionContent", (msg: string) => {
-      let question: QuestionContent = JSON.parse(msg)
+      let question: QuestionContent = JSON.parse(msg);
       setQuestionName(question.name);
       setQuestionDescription(question.description);
       setQuestionStub(question.stub);
     });
 
     socket.on("scoreboardUpdate", (msg: string) => {
-      let results: {[key: string]: number} = JSON.parse(msg);
+      let results: { [key: string]: number } = JSON.parse(msg);
       console.log(results);
       setScoreboard(results);
     });
 
     socket.on("submissionResults", (msg: string) => {
       let results: string[] = JSON.parse(msg);
-      setSubmissionResult(results.join('\n'));
+      setSubmissionResult(results.join("\n"));
     });
-
 
     socket.on("setTurn", (userId: string) => {
       setCurrentTurnId(userId);
@@ -98,15 +99,14 @@ const useSocket = () => {
   };
 
   const submitQuestion = () => {
-    socket.emit('submit');
-  }
+    socket.emit("submit");
+  };
 
   const nextQuestion = () => {
-    socket.emit('clearCode');
-    socket.emit('getQuestion');
+    socket.emit("clearCode");
+    socket.emit("getQuestion");
     setSubmissionResult(null);
-    
-  }
+  };
 
   return {
     connected,
@@ -140,72 +140,170 @@ const UserList = ({
   sortBy(sorted, "index");
 
   return (
-    <div>
+    <div style={{ textAlign: "left", background: "#f3f4f6" }}>
+      <div style={{ padding: "5px", fontWeight: "bold" }}>Player order</div>
       {users.map((u) => (
-        <div>
-          {currentTurnId === currentUser.id ? ">" : ""}
-          {u.name}
-          {u.id === currentUser.id ? "*" : ""}
-        </div>
+        <UserListItem
+          user={u}
+          currentTurnId={currentTurnId}
+          currentUser={currentUser}
+        />
       ))}
+      <div style={{ padding: "5px", fontWeight: "bold", marginTop: "20px" }}>
+        You
+      </div>
+      <UserListItem
+        user={currentUser}
+        currentTurnId={currentTurnId}
+        currentUser={currentUser}
+      />
     </div>
   );
 };
 
+const UserListItem = ({
+  user,
+  currentUser,
+  currentTurnId,
+}: {
+  user: User;
+  currentUser: User;
+  currentTurnId: string;
+}) => {
+  const style =
+    user.id === currentTurnId
+      ? { border: "4px solid #53db56", padding: "5px" }
+      : { padding: "5px" };
+  return (
+    <div style={style}>
+      {user.name}
+      {user.id === currentUser.id ? "*" : ""}
+    </div>
+  );
+};
+
+const getTurnsAway = (
+  users: User[],
+  currentTurnId: string,
+  currentUser: User
+) => {
+  const sorted = [...users];
+  sortBy(sorted, "index");
+
+  const playerIndex = sorted.findIndex((u) => u.id == currentUser.id);
+  const currentIndex = sorted.findIndex((u) => u.id === currentTurnId);
+  if (playerIndex >= currentIndex) {
+    return playerIndex - currentIndex;
+  } else {
+    return playerIndex - currentIndex + sorted.length;
+  }
+};
+
+const StatusBar = ({
+  users,
+  currentUser,
+  currentTurnId,
+}: {
+  users: User[];
+  currentUser: User;
+  currentTurnId: string;
+}) => {
+  let text;
+  const style: { backgroundColor?: string } = {};
+
+  if (currentTurnId === currentUser.id) {
+    style.backgroundColor = "#53db56";
+    text = "It's your turn!!";
+  } else {
+    const turns = getTurnsAway(users, currentTurnId, currentUser);
+    text = `${turns} turn${turns === 1 ? "" : "s"} away`;
+  }
+  return (
+    <div style={{ ...style, padding: "10px", textAlign: "left" }}>
+      <b>Status: </b>
+      {text}
+    </div>
+  );
+};
+
+const isApprovedKey = (key: string) => {
+  return key.length === 1 || ["Enter", "Backspace", "Tab"].includes(key);
+};
+
 const App = () => {
-  const { connected, currentUser, users, code, role, submissionResult, currentTurnId, questionName, questionDescription, questionStub, scoreboard, emitKeyPress, submitQuestion, nextQuestion } =
-    useSocket();
+  const {
+    connected,
+    currentUser,
+    users,
+    code,
+    submissionResult,
+    currentTurnId,
+    questionName,
+    questionDescription,
+    questionStub,
+    emitKeyPress,
+    submitQuestion,
+    nextQuestion,
+    role,
+    scoreboard,
+  } = useSocket();
 
   return (
     <>
       <div className="Role">You are a {role ? role : "Player"}</div>
       <div className="App">connection status: {connected ? "yes!" : "no"}</div>
-      <div className="QuestionText"> {questionName}: {questionDescription}</div>
+      <div style={{ marginBottom: "10px" }}>
+        <b>{questionName}:</b> {questionDescription}
+      </div>
       {currentUser && currentTurnId && (
         <>
-          <UserList
-            users={users}
-            currentUser={currentUser}
-            currentTurnId={currentTurnId}
-          />
-          <Editor
-            value={questionStub + code}
-            onKeyDown={(key) => {
-              if (currentTurnId === currentUser.id) {
-                console.log(key);
-                emitKeyPress(key);
-              }
-            }}
-          />
-          {submissionResult ? 
+          <div style={{ border: "1px solid #d2d6dc" }}>
+            <StatusBar
+              users={users}
+              currentUser={currentUser}
+              currentTurnId={currentTurnId}
+            />
+            <div style={{ display: "flex" }}>
+              <Editor
+                value={questionStub + code}
+                onKeyDown={(key) => {
+                  if (currentTurnId === currentUser.id && isApprovedKey(key)) {
+                    emitKeyPress(key);
+                  }
+                }}
+              />
+              <UserList
+                users={users}
+                currentUser={currentUser}
+                currentTurnId={currentTurnId}
+              />
+            </div>
+          </div>
+          {submissionResult ? (
             <>
-            <TerminalOutput
-              text={submissionResult}
-            /> 
-            <button onClick={nextQuestion}>Next Question</button>
+              <button onClick={nextQuestion}>Next Question</button>
+              <TerminalOutput text={submissionResult} />
+              <button onClick={submitQuestion}>Submit Answer</button>
             </>
-            : 
+          ) : (
             <button onClick={submitQuestion}>Submit Answer</button>
-          }
-          {
-            scoreboard ?
-            <table><tbody>
-            {Object.entries(scoreboard).map((entry) => (
-              <tr><td>{entry[0]}</td><td>{entry[1]}</td></tr>
-            ))}
-            </tbody></table>
-            : <div></div>
-          }
-          
+          )}
+          {scoreboard ? (
+            <table>
+              <tbody>
+                {Object.entries(scoreboard).map((entry) => (
+                  <tr>
+                    <td>{entry[0]}</td>
+                    <td>{entry[1]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div></div>
+          )}
         </>
-        
-          
-        
-            
-          
-        
       )}
-      
     </>
   );
 };
