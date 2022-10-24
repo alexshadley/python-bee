@@ -83,6 +83,10 @@ def key_press(key):
     global code
     print("key pressed:", key)
 
+    # bail if it's not the player's turn
+    if current_turn != request.sid:
+        return
+
     if len(key) == 1:
         code += key
     elif key == "Enter":

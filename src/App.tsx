@@ -18,7 +18,7 @@ type QuestionContent = {
   stub: string;
 };
 
-const socket = io();
+const socket = io("localhost:5001");
 
 const isUser = (u: unknown): u is User =>
   typeof u === "object" && !!u && "name" in u && "index" in u && "id" in u;
@@ -249,7 +249,9 @@ const App = () => {
   } = useSocket();
 
   return (
-    <>
+    <div
+      style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
+    >
       <div className="Role">You are a {role ? role : "Player"}</div>
       <div className="App">connection status: {connected ? "yes!" : "no"}</div>
       <div style={{ marginBottom: "10px" }}>
@@ -257,7 +259,7 @@ const App = () => {
       </div>
       {currentUser && currentTurnId && (
         <>
-          <div style={{ border: "1px solid #d2d6dc" }}>
+          <div style={{ border: "1px solid #d2d6dc", width: "min-content" }}>
             <StatusBar
               users={users}
               currentUser={currentUser}
@@ -304,7 +306,7 @@ const App = () => {
           )}
         </>
       )}
-    </>
+    </div>
   );
 };
 
