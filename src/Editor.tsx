@@ -11,33 +11,27 @@ const BLINK_SPEED = 500;
 const Editor = ({
   value,
   onKeyDown,
+  canEdit,
 }: {
   value: string;
   onKeyDown: (key: string) => void;
+  canEdit: boolean;
 }) => {
   const [blink, setBlink] = useState(false);
-
   useEffect(() => {
-    const doBlink = () => {
-      setTimeout(() => {
-        setBlink((b) => !b);
-        doBlink();
-      }, BLINK_SPEED);
-    };
-
-    doBlink();
+    const handler = setInterval(() => setBlink((b) => !b), BLINK_SPEED);
+    return () => clearTimeout(handler);
   }, []);
 
   let content = hljs.highlight(value, { language: "python" }).value;
-  if (blink) {
+  if (blink && canEdit) {
     content = content + "_";
   }
   return (
     <div
       style={{
-        border: "1px solid black",
-        width: "600px",
-        height: "300px",
+        width: "700px",
+        height: "500px",
         padding: "10px",
         textAlign: "left",
         fontFamily: "monospace",

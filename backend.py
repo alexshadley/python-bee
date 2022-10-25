@@ -16,27 +16,64 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "secret!"
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-question_id = 0
-code = ""
-users = []
-roles = dict()
-scores = collections.defaultdict(lambda: 0)
-current_turn = ""
+# code = ""
+# users = []
+# roles = dict()
+# scores = collections.defaultdict(lambda: 0)
+# current_turn = ""
+
+# game_state = {
+#     "question_id": 0,
+#     "code": "",
+#     "users": [],
+#     "roles": dict(),
+#     "scores": collections.defaultdict(lambda: 0),
+#     "current_turn": "",
+# }
+
+
+class GameState:
+    def __init__(self):
+        self.question_id = 0
+        self.code = ""
+        self.users = []
+        self.roles = dict()
+        self.scores = collections.defaultdict(lambda: 0)
+        self.current_turn = ""
+        self.question = None
+        self.submission_results = []
+
+    def next_turn(self):
+        index = next(u for u in self.users if u["id"] == self.current_turn)["index"] + 1
+        users_by_index = {user["index"]: user for user in self.users}
+        while index not in users_by_index:
+            index += 1
+            # if we came to the end, loop back around
+            if index > max([user["index"] for user in self.users]):
+                index = 0
+
+        self.current_turn = users_by_index[index]["id"]
+
+    def broadcast(self):
+        emit(
+            "updateState",
+            {
+                "code": self.code,
+                "users": self.users,
+                "roles": self.roles,
+                "scores": self.scores,
+                "currentTurn": self.current_turn,
+                "question": self.question,
+                "submissionResults": self.submission_results,
+            },
+            broadcast=True,
+        )
+
+
+game_state = GameState()
+
 
 questions = json.load(open("./questions.json"))
-
-
-def next_turn():
-    global current_turn
-    index = next(u for u in users if u["id"] == current_turn)["index"] + 1
-    users_by_index = {user["index"]: user for user in users}
-    while index not in users_by_index:
-        index += 1
-        # if we came to the end, loop back around
-        if index > max([user["index"] for user in users]):
-            index = 0
-
-    current_turn = users_by_index[index]["id"]
 
 
 def get_name():
@@ -47,128 +84,122 @@ def get_name():
 def connect():
     print("Client connected")
 
-    index = max([user["index"] for user in users]) + 1 if users else 0
+    index = (
+        max([user["index"] for user in game_state.users]) + 1 if game_state.users else 0
+    )
     new_user = {"name": get_name(), "index": index, "id": request.sid}
-    users.append(new_user)
+    game_state.users.append(new_user)
 
     # tell everyone about the new user
-    emit("setUsers", users, broadcast=True)
+    # emit("setUsers", users, broadcast=True)
     get_question()
 
     # initial state setup for new client
-    emit("assignUser", new_user)
-    emit("setCode", code)
+    # emit("assignUser", new_user)
+    # emit("setCode", code)
 
-    if len(users) == 1:
-        global current_turn
-        current_turn = request.sid
-    emit("setTurn", current_turn)
+    if len(game_state.users) == 1:
+        game_state.current_turn = new_user["id"]
+    game_state.broadcast()
 
 
 @socketio.on("disconnect")
 def disconnect():
-    global users
     print("Client disconnected")
 
     # if it was the player's turn and they left, go to next
-    if request.sid == current_turn:
-        next_turn()
+    if request.sid == game_state.current_turn:
+        game_state.next_turn()
 
-    users = [u for u in users if u["id"] != request.sid]
-    emit("setUsers", users, broadcast=True)
+    game_state.users = [u for u in game_state.users if u["id"] != request.sid]
+    game_state.broadcast()
 
 
 @socketio.on("keyPress")
 def key_press(key):
-    global code
     print("key pressed:", key)
 
     # bail if it's not the player's turn
-    if current_turn != request.sid:
+    if game_state.current_turn != request.sid:
         return
 
     if len(key) == 1:
-        code += key
+        game_state.code += key
     elif key == "Enter":
-        code += "\n"
+        game_state.code += "\n"
     elif key == "Tab":
-        code += "    "
+        game_state.code += "    "
     elif key == "Backspace":
-        code = "\n".join(code.split("\n")[:-1])
+        game_state.code = "\n".join(game_state.code.split("\n")[:-1])
         # unless we're at the start, stay on the same line
-        if len(code) > 0:
-            code += "\n"
+        if len(game_state.code) > 0:
+            game_state.code += "\n"
 
-    next_turn()
-    emit("setCode", code, broadcast=True)
-    emit("setTurn", current_turn, broadcast=True)
+    game_state.next_turn()
+    game_state.broadcast()
+    # emit("setCode", code, broadcast=True)
+    # emit("setTurn", current_turn, broadcast=True)
 
 
 @socketio.on("getQuestion")
-def get_question(id=None):
-    global question_id
-    global code
-    if id is None:
-        id = random.choice(list(questions.keys()))
-    print(id)
-    id = str(id)
+def get_question():
+    id = str(random.choice(list(questions.keys())))
 
     question_name, question_description, question_stub = (
         questions[id]["name"],
         questions[id]["description"],
         questions[id]["stub"],
     )
-    emit("setCode", code, broadcast=True)
-    question_id = id
-    emit(
-        "questionContent",
-        json.dumps(
-            {
-                "name": question_name,
-                "description": question_description,
-                "stub": question_stub,
-            }
-        ),
-        broadcast=True,
-    )
-    roles = dict()
-    rand_user = random.randint(0, len(users) - 1)
-    for i, user in enumerate(users):
+    game_state.question_id = id
+    game_state.question = {
+        "name": question_name,
+        "description": question_description,
+        "stub": question_stub,
+    }
+    game_state.roles = dict()
+    rand_user = random.randint(0, len(game_state.users) - 1)
+    for i, user in enumerate(game_state.users):
         if i == rand_user:
-            roles[user["id"]] = "saboteur"
+            game_state.roles[user["id"]] = "saboteur"
         else:
-            roles[user["id"]] = "player"
-        print(roles[user["id"]])
-        emit("setRole", roles[user["id"]], room=user["id"])
+            game_state.roles[user["id"]] = "player"
+        print(game_state.roles[user["id"]])
+
+    game_state.code = ""
+    game_state.submission_results = []
+
+    game_state.broadcast()
 
 
 @socketio.on("submit")
 def submit():
     print("submitted")
-    global code
-    global question_id
+    # global code
+    # global question_id
+    # TODO: why isn't value unpacking working?
     results, correct = test_function(
-        questions[str(question_id)]["stub"] + code,
-        questions[str(question_id)]["test_cases"],
+        questions[str(game_state.question_id)]["stub"] + game_state.code,
+        questions[str(game_state.question_id)]["test_cases"],
     )
+    game_state.submission_results = results
     print(results)
-    emit("submissionResults", json.dumps(results), broadcast=True)
-    scoreboard = dict()
-    for user in users:
+    # emit("submissionResults", json.dumps(results), broadcast=True)
+    # scoreboard = dict()
+    for user in game_state.users:
         user_id = user["id"]
-        if roles.get(user_id) == "saboteur":
-            scores[user_id] += 0 if correct else 1
+        if game_state.roles.get(user_id) == "saboteur":
+            game_state.scores[user_id] += 0 if correct else 1
         else:
-            scores[user_id] += 1 if correct else -1
-        scoreboard[user["name"]] = scores[user["id"]]
-    emit("scoreboardUpdate", json.dumps(scoreboard), broadcast=True)
+            game_state.scores[user_id] += 1 if correct else -1
+        # scoreboard[user["name"]] = scores[user["id"]]
+    # emit("scoreboardUpdate", json.dumps(scoreboard), broadcast=True)
+
+    game_state.broadcast()
 
 
 @socketio.on("clearCode")
 def clear_code():
-    global code
-    code = ""
-    emit("setCode", code, broadcast=True)
+    game_state.broadcast()
 
 
 @app.route("/web")

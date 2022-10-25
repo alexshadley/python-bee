@@ -18,20 +18,27 @@ type QuestionContent = {
   stub: string;
 };
 
+type GameStatePayload = {
+  code: string;
+  users: User[];
+  roles: { [key: string]: string };
+  scores: { [userId: string]: number };
+  currentTurn: string;
+  question: QuestionContent;
+  submissionResults: string[];
+};
+
 const socket = io("localhost:5001");
 
-const isUser = (u: unknown): u is User =>
-  typeof u === "object" && !!u && "name" in u && "index" in u && "id" in u;
-
 const useSocket = () => {
-  const [connected, setConnected] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [socketId, setSocketId] = useState<string | null>(null);
   const [currentTurnId, setCurrentTurnId] = useState<string | null>(null);
   const [questionName, setQuestionName] = useState<string | null>(null);
   const [questionDescription, setQuestionDescription] = useState<string | null>(
     null
   );
   const [submissionResult, setSubmissionResult] = useState<string | null>(null);
+  // TODO: fix these
   const [scoreboard, setScoreboard] = useState<{ [key: string]: number }>({});
   const [role, setRole] = useState<string | null>(null);
   const [questionStub, setQuestionStub] = useState<string | null>(null);
@@ -41,51 +48,23 @@ const useSocket = () => {
   useEffect(() => {
     socket.on("connect", () => {
       console.log("connect");
-      setConnected(true);
+      // boo bad API socketio
+      setSocketId(socket.id);
     });
 
     socket.on("disconnect", () => {
-      setConnected(false);
+      setSocketId(null);
     });
 
-    socket.on("assignUser", (user: unknown) => {
-      if (isUser(user)) {
-        setCurrentUser(user);
-      }
-    });
-
-    socket.on("questionContent", (msg: string) => {
-      let question: QuestionContent = JSON.parse(msg);
-      setQuestionName(question.name);
-      setQuestionDescription(question.description);
-      setQuestionStub(question.stub);
-    });
-
-    socket.on("scoreboardUpdate", (msg: string) => {
-      let results: { [key: string]: number } = JSON.parse(msg);
-      console.log(results);
-      setScoreboard(results);
-    });
-
-    socket.on("submissionResults", (msg: string) => {
-      let results: string[] = JSON.parse(msg);
-      setSubmissionResult(results.join("\n"));
-    });
-
-    socket.on("setTurn", (userId: string) => {
-      setCurrentTurnId(userId);
-    });
-
-    socket.on("setCode", (code: string) => {
-      setCode(code);
-    });
-
-    socket.on("setUsers", (users: unknown[]) => {
-      setUsers(users.filter(isUser));
-    });
-
-    socket.on("setRole", (role: string) => {
-      setRole(role);
+    socket.on("updateState", (gameState: GameStatePayload) => {
+      console.log("gameState", gameState);
+      setCurrentTurnId(gameState.currentTurn);
+      setQuestionName(gameState.question.name);
+      setQuestionDescription(gameState.question.description);
+      setQuestionStub(gameState.question.stub);
+      setUsers(gameState.users);
+      setCode(gameState.code);
+      setSubmissionResult(gameState.submissionResults.join("\n"));
     });
 
     return () => {
@@ -103,13 +82,14 @@ const useSocket = () => {
   };
 
   const nextQuestion = () => {
-    socket.emit("clearCode");
     socket.emit("getQuestion");
     setSubmissionResult(null);
   };
 
+  const currentUser = users.find((u) => u.id === socketId) ?? null;
+
   return {
-    connected,
+    socketId,
     users,
     currentUser,
     currentTurnId,
@@ -120,7 +100,6 @@ const useSocket = () => {
     code,
     submissionResult,
     scoreboard,
-    setCode,
     emitKeyPress,
     submitQuestion,
     nextQuestion,
@@ -140,16 +119,17 @@ const UserList = ({
   sortBy(sorted, "index");
 
   return (
-    <div style={{ textAlign: "left", background: "#f3f4f6" }}>
-      <div style={{ padding: "5px", fontWeight: "bold" }}>Player order</div>
+    <div style={{ textAlign: "left", background: "#f3f4f6", width: "200px" }}>
+      <div style={{ margin: "10px", fontWeight: "bold" }}>Player order</div>
       {users.map((u) => (
         <UserListItem
+          key={u.id}
           user={u}
           currentTurnId={currentTurnId}
           currentUser={currentUser}
         />
       ))}
-      <div style={{ padding: "5px", fontWeight: "bold", marginTop: "20px" }}>
+      <div style={{ margin: "10px", fontWeight: "bold", marginTop: "30px" }}>
         You
       </div>
       <UserListItem
@@ -171,11 +151,18 @@ const UserListItem = ({
   currentTurnId: string;
 }) => {
   const style =
-    user.id === currentTurnId
-      ? { border: "4px solid #53db56", padding: "5px" }
-      : { padding: "5px" };
+    user.id === currentTurnId ? { border: "2px solid #53db56" } : {};
   return (
-    <div style={style}>
+    <div
+      style={{
+        ...style,
+        padding: "5px",
+        margin: "10px",
+        borderRadius: "4px",
+        backgroundColor: "white",
+        boxShadow: "1px 1px 2px 1px rgba(0, 0, 0, 0.1)",
+      }}
+    >
       {user.name}
       {user.id === currentUser.id ? "*" : ""}
     </div>
@@ -209,17 +196,23 @@ const StatusBar = ({
   currentTurnId: string;
 }) => {
   let text;
-  const style: { backgroundColor?: string } = {};
+  const style: { border?: string } = {};
 
   if (currentTurnId === currentUser.id) {
-    style.backgroundColor = "#53db56";
+    // style.border = "2px solid #53db56";
     text = "It's your turn!!";
   } else {
     const turns = getTurnsAway(users, currentTurnId, currentUser);
     text = `${turns} turn${turns === 1 ? "" : "s"} away`;
   }
   return (
-    <div style={{ ...style, padding: "10px", textAlign: "left" }}>
+    <div
+      style={{
+        padding: "10px",
+        textAlign: "left",
+        borderBottom: "1px solid #d2d6dc",
+      }}
+    >
       <b>Status: </b>
       {text}
     </div>
@@ -230,9 +223,23 @@ const isApprovedKey = (key: string) => {
   return key.length === 1 || ["Enter", "Backspace", "Tab"].includes(key);
 };
 
+const Button = ({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+}) => {
+  return (
+    <button className="button" onClick={onClick}>
+      {children}
+    </button>
+  );
+};
+
 const App = () => {
   const {
-    connected,
+    socketId,
     currentUser,
     users,
     code,
@@ -253,13 +260,22 @@ const App = () => {
       style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
     >
       <div className="Role">You are a {role ? role : "Player"}</div>
-      <div className="App">connection status: {connected ? "yes!" : "no"}</div>
+      <div className="App">
+        connection status: {socketId ? `yes! (${socketId})` : "no"}
+      </div>
       <div style={{ marginBottom: "10px" }}>
         <b>{questionName}:</b> {questionDescription}
       </div>
       {currentUser && currentTurnId && (
         <>
-          <div style={{ border: "1px solid #d2d6dc", width: "min-content" }}>
+          <div
+            style={{
+              border: "1px solid #d2d6dc",
+              width: "min-content",
+              borderRadius: "8px",
+              overflow: "hidden",
+            }}
+          >
             <StatusBar
               users={users}
               currentUser={currentUser}
@@ -273,6 +289,7 @@ const App = () => {
                     emitKeyPress(key);
                   }
                 }}
+                canEdit={currentTurnId === currentUser.id}
               />
               <UserList
                 users={users}
@@ -283,12 +300,17 @@ const App = () => {
           </div>
           {submissionResult ? (
             <>
-              <button onClick={nextQuestion}>Next Question</button>
-              <TerminalOutput text={submissionResult} />
-              <button onClick={submitQuestion}>Submit Answer</button>
+              <div style={{ marginTop: "20px" }}>
+                <TerminalOutput text={submissionResult} />
+              </div>
+              <div style={{ marginTop: "20px" }}>
+                <Button onClick={nextQuestion}>Next Question</Button>
+              </div>
             </>
           ) : (
-            <button onClick={submitQuestion}>Submit Answer</button>
+            <div style={{ marginTop: "20px" }}>
+              <Button onClick={submitQuestion}>Submit Answer</Button>
+            </div>
           )}
           {scoreboard ? (
             <table>
