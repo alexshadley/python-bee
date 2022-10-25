@@ -7,6 +7,7 @@ from evaluator import test_function
 
 import json
 import random
+from os import environ
 
 names = json.load(open("./usernames.json"))
 FIRSTS, LASTS = names["firsts"], names["lasts"]
@@ -214,4 +215,7 @@ def files(path):
 
 
 if __name__ == "__main__":
-    socketio.run(app, port=5001, use_reloader=True)
+    if environ.get("ENV") == "PROD":
+        socketio.run(app, host="0.0.0.0", port=80, use_reloader=True)
+    else:
+        socketio.run(app, port=5001, use_reloader=True)
