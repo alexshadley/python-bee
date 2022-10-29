@@ -257,7 +257,12 @@ const App = () => {
 
   return (
     <div
-      style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        backgroundColor: "red",
+      }}
     >
       <div className="Role">You are a {role ? role : "Player"}</div>
       <div className="App">
