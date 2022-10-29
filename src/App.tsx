@@ -28,7 +28,7 @@ type GameStatePayload = {
   submissionResults: string[];
 };
 
-const socket = io("localhost:5001");
+const socket = import.meta.env.PROD ? io() : io("localhost:5001");
 
 const useSocket = () => {
   const [socketId, setSocketId] = useState<string | null>(null);

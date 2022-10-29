@@ -215,7 +215,7 @@ def files(path):
 
 
 if __name__ == "__main__":
-    if environ.get("ENV") == "PROD":
+    if environ.get("PROD") == "1":
         socketio.run(app, host="0.0.0.0", port=80, use_reloader=True)
     else:
         socketio.run(app, port=5001, use_reloader=True)
