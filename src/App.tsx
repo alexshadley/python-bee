@@ -261,6 +261,7 @@ const App = () => {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        backgroundColor: "green",
       }}
     >
       <div className="Role">You are a {role ? role : "Player"}</div>
